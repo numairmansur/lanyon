@@ -1,18 +1,28 @@
 ---
 layout: post
-title: Example content
+title: Basic Usage
 ---
 
+## RoBO in a few lines of code
 
-<div class="message">
-  Howdy! This is an example blog post that shows several types of HTML content supported in this theme.
-</div>
+RoBO offers a simple interface such that you can use it as a optimizer for black box function without knowing what’s going on inside. In order to do that you first have to define the objective function and the bounds of the configuration space:
 
-Cum sociis natoque penatibus et magnis <a href="#">dis parturient montes</a>, nascetur ridiculus mus. *Aenean eu leo quam.* Pellentesque ornare sem lacinia quam venenatis vestibulum. Sed posuere consectetur est at lobortis. Cras mattis consectetur purus sit amet fermentum.
+{% highlight python %}
+import numpy as np
+from robo.fmin import fmin
 
-> Curabitur blandit tempus porttitor. Nullam quis risus eget urna mollis ornare vel eu leo. Nullam id dolor id nibh ultricies vehicula ut id elit.
+def objective_function(x):
+    return  np.sin(3 * x) * 4 * (x - 1) * (x + 2)
 
-Etiam porta **sem malesuada magna** mollis euismod. Cras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur.
+X_lower = np.array([0])
+X_upper = np.array([6])
+{% endhighlight %}
+
+The you can start RoBO with the following command and it will return the best configuration / function value it found:
+
+{% highlight python %}
+x_best, fval = fmin(objective_function, X_lower, X_upper)
+{% endhighlight %}
 
 ## Inline HTML elements
 
