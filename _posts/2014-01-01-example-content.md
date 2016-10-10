@@ -123,5 +123,3 @@ bo.run(num_iterations=10)
 {% endhighlight %}
 
 -----
-
-Want to see something else added? <a href="https://github.com/poole/poole/issues/new">Open an issue.</a>
