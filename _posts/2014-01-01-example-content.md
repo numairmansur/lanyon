@@ -24,18 +24,14 @@ The you can start RoBO with the following command and it will return the best co
 x_best, fval = fmin(objective_function, X_lower, X_upper)
 {% endhighlight %}
 
-## Inline HTML elements
+## Bayesian optimization with RoBO
 
-HTML defines a long list of available inline tags, a complete list of which can be found on the [Mozilla Developer Network](https://developer.mozilla.org/en-US/docs/Web/HTML/Element).
+RoBO is a flexible modular framework for Bayesian optimization. It distinguishes between different components that are necessary for Bayesian optimization and treats all of those components as modules which allows us to easily switch between different modules and add new-modules:
 
-- **To bold text**, use `<strong>`.
-- *To italicize text*, use `<em>`.
-- Abbreviations, like <abbr title="HyperText Markup Langage">HTML</abbr> should use `<abbr>`, with an optional `title` attribute for the full phrase.
-- Citations, like <cite>&mdash; Mark otto</cite>, should use `<cite>`.
-- <del>Deleted</del> text should use `<del>` and <ins>inserted</ins> text should use `<ins>`.
-- Superscript <sup>text</sup> uses `<sup>` and subscript <sub>text</sub> uses `<sub>`.
-
-Most of these elements are styled by browsers with few modifications on our part.
+- [Task:](http://robo-fork.readthedocs.io/en/latest/modules.html#task) This module contains the necessary information that RoBO needs to optimize the objective function (for example an interface for the objective function the input bounds and the dimensionality of the objective function).
+- [Moels:](http://robo-fork.readthedocs.io/en/latest/modules.html#models) This is the regression method to model the current believe of the objective function.
+- [Acquisition functions:](http://robo-fork.readthedocs.io/en/latest/modules.html#acquisitionfunctions) This module represents the acquisition function which acts as a surrogate that determines which configuration will be evaluated in the next step.
+- [Maximizers:](http://robo-fork.readthedocs.io/en/latest/modules.html#maximizers) This module is used to optimize the acquisition function to pick the next configuration.
 
 ## Heading
 
