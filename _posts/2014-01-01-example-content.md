@@ -122,4 +122,86 @@ Afterwards we can run it by:
 bo.run(num_iterations=10)
 {% endhighlight %}
 
+### Saving output
+
+You can save RoBO’s output by passing the parameters ‘save_dir’ and ‘num_save’. The first parameter ‘save_dir’ specifies where the results will be saved and the second parameter ‘num_save’ after how many iterations the output should be saved.
+
+{% highlight python %}
+bo = BayesianOptimization(acquisition_fkt=acquisition_func,
+                          model=model,
+                          maximize_fkt=maximizer,
+                          task=task)
+                          save_dir="path_to_directory",
+                          num_save=1)
+{% endhighlight %}
+
+RoBO will save then the following information:
+
+* X: The configuration it evaluated so far
+* y: Their corresponding function values
+* incumbent: The best configuration it found so far
+* incumbent_value: Its function value
+* time_function: The time each function evaluation took
+* optimizer_overhead: The time RoBO needed to pick a new configuration
+
+### Implementing the Bayesian optimization loop
+
+This example illustrates how you can implement the main Bayesian optimization loop by yourself:
+
+{% highlight python %}
+import GPy
+import matplotlib.pyplot as plt
+import numpy as np
+
+from robo.models.GPyModel import GPyModel
+from robo.acquisition.EI import EI
+from robo.maximizers.grid_search import GridSearch
+from robo.recommendation.incumbent import compute_incumbent
+from robo.task.base_task import BaseTask
+
+
+# The optimization function that we want to optimize. It gets a numpy array with shape (N,D) where N >= 1 are the number of datapoints and D are the number of features
+class ExampleTask(BaseTask):
+    def __init__(self):
+        X_lower = np.array([0])
+        X_upper = np.array([6])
+        super(ExampleTask, self).__init__(X_lower, X_upper)
+
+    def objective_function(self, x):
+        return np.sin(3 * x) * 4 * (x - 1) * (x + 2)
+
+task = ExampleTask()
+
+# Defining the method to model the objective function
+kernel = GPy.kern.Matern52(input_dim=task.n_dims)
+model = GPyModel(kernel, optimize=True, noise_variance=1e-4, num_restarts=10)
+
+# The acquisition function that we optimize in order to pick a new x
+acquisition_func = EI(model, X_upper=task.X_upper, X_lower=task.X_lower, compute_incumbent=compute_incumbent, par=0.1)  # par is the minimum improvement that a point has to obtain
+
+
+# Set the method that we will use to optimize the acquisition function
+maximizer = GridSearch(acquisition_func, task.X_lower, task.X_upper)
+
+
+# Draw one random point and evaluate it to initialize BO
+X = np.array([np.random.uniform(task.X_lower, task.X_upper, task.n_dims)])
+Y = task.evaluate(X)
+
+# This is the main Bayesian optimization loop
+for i in xrange(10):
+    # Fit the model on the data we observed so far
+    model.train(X, Y)
+
+    # Update the acquisition function model with the retrained model
+    acquisition_func.update(model)
+
+    # Optimize the acquisition function to obtain a new point
+    new_x = maximizer.maximize()
+
+    # Evaluate the point and add the new observation to our set of previous seen points
+    new_y = task.objective_function(np.array(new_x))
+    X = np.append(X, new_x, axis=0)
+    Y = np.append(Y, new_y, axis=0)
+{% endhighlight %}
 -----
