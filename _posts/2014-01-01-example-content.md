@@ -33,95 +33,94 @@ RoBO is a flexible modular framework for Bayesian optimization. It distinguishes
 - [Acquisition functions:](http://robo-fork.readthedocs.io/en/latest/modules.html#acquisitionfunctions) This module represents the acquisition function which acts as a surrogate that determines which configuration will be evaluated in the next step.
 - [Maximizers:](http://robo-fork.readthedocs.io/en/latest/modules.html#maximizers) This module is used to optimize the acquisition function to pick the next configuration.
 
-## Heading
+### Defining an objective function
 
-Vivamus sagittis lacus vel augue rutrum faucibus dolor auctor. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Morbi leo risus, porta ac consectetur ac, vestibulum at eros.
+RoBo can optimize any function X \rightarrow Y with X as an N\times D numpy array and Y as an N\times K numpy array. Thereby N is the number of points you want to evaluate at, D is the dimension of the input X and K the number of output dimensions (mostly K = 1). In order to optimize any function you have to define a task object that implements the interface BaseTask. This class should contain the objective function and the bounds of the input space.
 
-### Code
+{% highlight python %}
+import numpy as np
 
-Cum sociis natoque penatibus et magnis dis `code element` montes, nascetur ridiculus mus.
+    from robo.task.base_task import BaseTask
 
-{% highlight js %}
-// Example can be run directly in your JavaScript console
+class ExampleTask(BaseTask):
 
-// Create a function that takes two arguments and returns the sum of those arguments
-var adder = new Function("a", "b", "return a + b");
+        def __init__(self):
+            self.X_lower = np.array([0])
+            self.X_upper = np.array([6])
+            self.n_dims = 1
 
-// Call the function
-adder(2, 6);
-// > 8
+        def objective_function(self, x):
+            return np.sin(3 * x) * 4 * (x - 1) * (x + 2)
+
+    task = ExampleTask()
 {% endhighlight %}
 
-Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem malesuada magna mollis euismod. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa.
 
-### Lists
+### Building a model
 
-Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem malesuada magna mollis euismod. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.
+The first step to optimize this objective function is to define a model that captures the current believe of potential functions. The probably most used method in Bayesian optimization for modeling the objective function are Gaussian processes. RoBO uses the well-known [GPy](http://sheffieldml.github.io/GPy/) library as implementation for Gaussian processes. The following code snippet shows how to use a GPy model via RoBO:
 
-* Praesent commodo cursus magna, vel scelerisque nisl consectetur et.
-* Donec id elit non mi porta gravida at eget metus.
-* Nulla vitae elit libero, a pharetra augue.
+{% highlight python %}
+import GPy
 
-Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue.
+from robo.models.GPyModel import GPyModel
 
-1. Vestibulum id ligula porta felis euismod semper.
-2. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.
-3. Maecenas sed diam eget risus varius blandit sit amet non magna.
+kernel = GPy.kern.Matern52(input_dim=task_ndims)
+model = GPyModel(kernel, optimize=True, noise_variance = 1e-4, num_restarts=10)
+{% endhighlight %}
 
-Cras mattis consectetur purus sit amet fermentum. Sed posuere consectetur est at lobortis.
+RoBO offers a wrapper interface GPyModel to access the Gaussian processes in [GPy](http://sheffieldml.github.io/GPy/). We have to specify a kernel from GPy library as covariance function when we initialize the model. For further details on those kernels visit GPy. We can either use fix kernel hyperparameter or optimize them by optimizing the marginal likelihood. This is achieved by setting the optimize flag to True.
 
-<dl>
-  <dt>HyperText Markup Language (HTML)</dt>
-  <dd>The language used to describe and define the content of a Web page</dd>
+### Creating the Acquisition Function
+After we defined a model we can define an acquisition function as a surrogate function that is used to pick the next point to evaluate. RoBO offers the following acquisition functions in the acquisition package:
 
-  <dt>Cascading Style Sheets (CSS)</dt>
-  <dd>Used to describe the appearance of Web content</dd>
+In order to use an acquisition function (in this case Expected Improvement) you have to pass it the models as well as the bounds of the input space:
 
-  <dt>JavaScript (JS)</dt>
-  <dd>The programming language used to build advanced Web sites and applications</dd>
-</dl>
+{% highlight python %}
+from robo.acquisition.EI import EI
+from robo.recommendation.incumbent import compute_incumbent
 
-Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Nullam quis risus eget urna mollis ornare vel eu leo.
+acquisition_func = EI(model, X_upper=task.X_upper, X_lower=task.X_lower, compute_incumbent=compute_incumbent, par=0.1)
+{% endhighlight %}
 
-### Tables
+Expected Improvement as well as Probability of Improvement need as additional input the current best configuration (i.e. incumbent). There are different ways to determine the incumbent. You can easily plug in any method by giving Expected Improvement a function handle (via compute_incumbent). This function is supposed to return a configuration and expects the model as input. In the case of EI and PI you additionally have to specify the parameter “par” which controls the balance between exploration and exploitation of the acquisition function.
 
-Aenean lacinia bibendum nulla sed consectetur. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Upvotes</th>
-      <th>Downvotes</th>
-    </tr>
-  </thead>
-  <tfoot>
-    <tr>
-      <td>Totals</td>
-      <td>21</td>
-      <td>23</td>
-    </tr>
-  </tfoot>
-  <tbody>
-    <tr>
-      <td>Alice</td>
-      <td>10</td>
-      <td>11</td>
-    </tr>
-    <tr>
-      <td>Bob</td>
-      <td>4</td>
-      <td>3</td>
-    </tr>
-    <tr>
-      <td>Charlie</td>
-      <td>7</td>
-      <td>9</td>
-    </tr>
-  </tbody>
-</table>
+### Maximizing the acquisition function
 
-Nullam id dolor id nibh ultricies vehicula ut id elit. Sed posuere consectetur est at lobortis. Nullam quis risus eget urna mollis ornare vel eu leo.
+The last component is the maximizer which will be used to optimize the acquisition function in order to get a new configuration to evaluate. RoBO offers different ways to optimize the acquisition functions such as:
+
+* grid search
+* DIRECT
+* CMA-ES
+* stochastic local search
+
+Here we will use a simple grid search to determine the configuration with the highest acquisition value:
+
+{% highlight python %}
+from robo.maximizers.grid_search import GridSearch
+
+maximizer = GridSearch(acquisition_func, task.X_lower, task.X_upper)
+{% endhighlight %}
+
+### Putting it all together
+
+Now we have all the ingredients to optimize our objective function. We can put all the above described components in the BayesianOptimization class
+
+{% highlight python %}
+from robo.solver.bayesian_optimization import BayesianOptimization
+
+bo = BayesianOptimization(acquisition_fkt=acquisition_func,
+                          model=model,
+                          maximize_fkt=maximizer,
+                          task=task)
+{% endhighlight %}
+
+Afterwards we can run it by:
+
+{% highlight python %}
+bo.run(num_iterations=10)
+{% endhighlight %}
 
 -----
 
